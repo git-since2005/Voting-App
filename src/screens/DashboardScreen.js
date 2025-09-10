@@ -50,32 +50,34 @@ const DashboardScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-      
+
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Welcome,</Text>
-          <Text style={styles.userName}>{user?.name || 'Voter'}</Text>
+          <Text style={styles.userName}>{user?.name || "Voter"}</Text>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <Ionicons name="log-out-outline" size={24} color="#4630EB" />
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.infoCard}>
         <View style={styles.infoCardRow}>
           <Text style={styles.infoCardLabel}>Voting Center:</Text>
-          <Text style={styles.infoCardValue}>{user?.votingCenter || 'Not Assigned'}</Text>
+          <Text style={styles.infoCardValue}>
+            {user?.votingCenter || "Not Assigned"}
+          </Text>
         </View>
         <View style={styles.infoCardRow}>
           <Text style={styles.infoCardLabel}>Voter ID:</Text>
-          <Text style={styles.infoCardValue}>{user?.id || 'N/A'}</Text>
+          <Text style={styles.infoCardValue}>{user?.id || "N/A"}</Text>
         </View>
       </View>
-      
+
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Your Voting History</Text>
       </View>
-      
+
       <FlatList
         data={user?.votingHistory || []}
         renderItem={renderVotingHistoryItem}
@@ -83,11 +85,11 @@ const DashboardScreen = ({ navigation }) => {
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={EmptyVotingHistory}
       />
-      
+
       {/* Floating Action Button for QR Scanner */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.fab}
-        onPress={() => stackNavigation.navigate('QRScanner')}
+        onPress={() => stackNavigation.navigate("QRDisplay")}
       >
         <Ionicons name="qr-code-outline" size={24} color="white" />
       </TouchableOpacity>

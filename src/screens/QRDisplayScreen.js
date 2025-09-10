@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -6,111 +6,244 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Alert,
-  Share
+  Share,
+  FlatList,
+  ScrollView,
+  Modal,
+  Image
 } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import QRCode from 'react-native-qrcode-svg';
 
 const QRDisplayScreen = ({ route, navigation }) => {
   const { centerInfo } = route.params || {};
   const { user, updateVotingHistory } = useAuth();
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [qrData, setQrData] = useState(null);
+  const [verificationQrData, setVerificationQrData] = useState(null);
   
-  // Generate a unique voting token
-  // In a real app, this would be cryptographically secure and verified by the backend
-  const generateVotingToken = () => {
-    const timestamp = new Date().getTime();
-    const randomPart = Math.random().toString(36).substring(2, 10);
-    return `${user.id}-${timestamp}-${randomPart}`;
+  // Mock candidates data for demo purposes
+  const candidates = [
+    { id: '1', name: 'Jane Smith', party: 'Progressive Party', position: 'President' },
+    { id: '2', name: 'John Doe', party: 'Conservative Party', position: 'President' },
+    { id: '3', name: 'Alex Johnson', party: 'Liberty Party', position: 'President' },
+    { id: '4', name: 'Maria Garcia', party: 'Unity Party', position: 'President' },
+    { id: '5', name: 'Robert Chen', party: 'Reform Party', position: 'President' },
+  ];
+  
+  // Function to handle candidate selection
+  const handleSelectCandidate = (candidate) => {
+    setSelectedCandidate(candidate);
+    
+    // Generate vote QR code data
+    const voteData = {
+      voterId: user?.id || 'user123',
+      candidateId: candidate.id,
+      candidateName: candidate.name,
+      party: candidate.party,
+      electionName: centerInfo?.electionName || 'General Election',
+      timestamp: new Date().toISOString(),
+      voteToken: 'vt-' + Math.random().toString(36).substring(2, 15)
+    };
+    setQrData(JSON.stringify(voteData));
+    
+    // Show success modal when candidate is selected
+    setShowSuccessModal(true);
   };
-  
-  // Create the voting data to be encoded in the QR code
-  const votingData = {
-    voterId: user?.id,
-    voterName: user?.name,
-    votingCenter: centerInfo?.centerName || user?.votingCenter,
-    timestamp: new Date().toISOString(),
-    token: generateVotingToken(),
-  };
-  
-  // Convert the voting data to a JSON string for the QR code
-  const qrCodeData = JSON.stringify(votingData);
   
   useEffect(() => {
     // In a real app, we would verify the voting center with the backend here
     // For demo purposes, we'll just show an alert
     Alert.alert(
       'Verification Successful', 
-      `You are verified to vote at ${centerInfo?.centerName || user?.votingCenter}. Please show this QR code to the voting official.`
+      `You are verified to vote at ${centerInfo?.centerName || user?.votingCenter}. Please select your candidate.`
     );
+    
+    // Generate verification QR code data
+    const verificationData = {
+      voterId: user?.id || 'user123',
+      votingCenter: centerInfo?.centerCode || 'center001',
+      timestamp: new Date().toISOString(),
+      verificationToken: 'vt-' + Math.random().toString(36).substring(2, 15)
+    };
+    setVerificationQrData(JSON.stringify(verificationData));
   }, []);
   
   const handleShare = async () => {
+    if (!selectedCandidate) {
+      Alert.alert('Error', 'Please select a candidate first');
+      return;
+    }
+    
     try {
       await Share.share({
-        message: 'My voting verification QR code',
-        // In a real app, we would generate a shareable image or link
+        message: `I voted for ${selectedCandidate.name} (${selectedCandidate.party}) in the ${centerInfo?.electionName || 'General Election'}`,
       });
     } catch (error) {
-      Alert.alert('Error', 'Could not share the QR code');
+      Alert.alert('Error', 'Could not share your vote');
     }
   };
   
   const handleDone = () => {
+    if (!selectedCandidate) {
+      Alert.alert('Error', 'Please select a candidate first');
+      return;
+    }
+    
     // Simulate updating voting history
     updateVotingHistory({
       electionName: centerInfo?.electionName || 'General Election',
       location: centerInfo?.centerName || user?.votingCenter,
+      candidate: selectedCandidate.name,
+      party: selectedCandidate.party
     });
+    
+    // Close success modal if open
+    setShowSuccessModal(false);
     
     // Navigate back to dashboard
     navigation.navigate('MainTabs');
   };
   
+  // Function to close success modal
+  const closeSuccessModal = () => {
+    setShowSuccessModal(false);
+  };
+  
+  // Render each candidate item
+  const renderCandidateItem = ({ item }) => (
+    <TouchableOpacity 
+      style={[styles.candidateItem, selectedCandidate?.id === item.id && styles.selectedCandidateItem]} 
+      onPress={() => handleSelectCandidate(item)}
+    >
+      <View style={styles.candidateInfo}>
+        <Text style={styles.candidateName}>{item.name}</Text>
+        <Text style={styles.candidateParty}>{item.party}</Text>
+        <Text style={styles.candidatePosition}>{item.position}</Text>
+      </View>
+      {selectedCandidate?.id === item.id && (
+        <View style={styles.selectedIndicator}>
+          <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Your Voting QR Code</Text>
-        <Text style={styles.subtitle}>
-          Present this code to the voting official to verify your identity
-        </Text>
-        
-        <View style={styles.qrContainer}>
-          {/* Main QR Code */}
-          <QRCode
-            value={qrCodeData}
-            size={250}
-            color="#000"
-            backgroundColor="#FFF"
-          />
-        </View>
-        
-        <View style={styles.infoContainer}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Name:</Text>
-            <Text style={styles.infoValue}>{user?.name}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Voting Center:</Text>
-            <Text style={styles.infoValue}>{centerInfo?.centerName || user?.votingCenter}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Date:</Text>
-            <Text style={styles.infoValue}>{new Date().toLocaleDateString()}</Text>
-          </View>
-        </View>
-        
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-            <Ionicons name="share-social-outline" size={20} color="white" />
-            <Text style={styles.shareButtonText}>Share</Text>
-          </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Select Your Candidate</Text>
+          <Text style={styles.subtitle}>
+            Please review and select one candidate for {centerInfo?.electionName || 'General Election'}
+          </Text>
           
-          <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
-            <Text style={styles.doneButtonText}>Done</Text>
-          </TouchableOpacity>
+          <View style={styles.candidatesContainer}>
+            <FlatList
+              data={candidates}
+              renderItem={renderCandidateItem}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.candidatesList}
+              scrollEnabled={false} // Disable FlatList scrolling to use parent ScrollView
+              nestedScrollEnabled={true}
+            />
+          </View>
+          
+          <View style={styles.infoContainer}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name:</Text>
+              <Text style={styles.infoValue}>{user?.name}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Voting Center:</Text>
+              <Text style={styles.infoValue}>{centerInfo?.centerName || user?.votingCenter}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Date:</Text>
+              <Text style={styles.infoValue}>{new Date().toLocaleDateString()}</Text>
+            </View>
+          </View>
+          
+          {/* Double QR Code Section */}
+          <View style={styles.qrCodeContainer}>
+            <View style={styles.qrCodeSection}>
+              <Text style={styles.qrCodeTitle}>Voter Verification</Text>
+              <View style={styles.qrCodeWrapper}>
+                {verificationQrData ? (
+                  <QRCode
+                    value={verificationQrData}
+                    size={120}
+                    color="#000"
+                    backgroundColor="#FFF"
+                  />
+                ) : (
+                  <View style={styles.qrPlaceholder}>
+                    <Ionicons name="qr-code-outline" size={60} color="#ccc" />
+                  </View>
+                )}
+              </View>
+              <Text style={styles.qrCodeDescription}>Show this code to verify your identity</Text>
+            </View>
+            
+            <View style={styles.qrCodeSection}>
+              <Text style={styles.qrCodeTitle}>Vote Confirmation</Text>
+              <View style={styles.qrCodeWrapper}>
+                {qrData && selectedCandidate ? (
+                  <QRCode
+                    value={qrData}
+                    size={120}
+                    color="#000"
+                    backgroundColor="#FFF"
+                  />
+                ) : (
+                  <View style={styles.qrPlaceholder}>
+                    <Ionicons name="qr-code-outline" size={60} color="#ccc" />
+                    <Text style={styles.qrPlaceholderText}>Select a candidate</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.qrCodeDescription}>Show this code to confirm your vote</Text>
+            </View>
+          </View>
+          
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+              <Ionicons name="share-social-outline" size={20} color="white" />
+              <Text style={styles.shareButtonText}>Share</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </ScrollView>
+      
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeSuccessModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.modalTitle}>Vote Successful!</Text>
+            <Text style={styles.modalText}>
+              You have successfully voted for {selectedCandidate?.name} ({selectedCandidate?.party}).
+            </Text>
+            <Text style={styles.modalSubtext}>
+              Thank you for participating in the {centerInfo?.electionName || 'General Election'}.
+            </Text>
+            <TouchableOpacity style={styles.modalButton} onPress={handleDone}>
+              <Text style={styles.modalButtonText}>Return to Dashboard</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -120,8 +253,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  scrollContainer: {
+    flexGrow: 1,
+  },
   content: {
-    flex: 1,
     padding: 20,
     alignItems: 'center',
   },
@@ -137,18 +272,54 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 10,
-    marginBottom: 30,
+    marginBottom: 20,
   },
-  qrContainer: {
+  candidatesContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  candidatesList: {
+    paddingBottom: 10,
+  },
+  candidateItem: {
     backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 16,
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: 30,
+    shadowRadius: 2,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectedCandidateItem: {
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  candidateInfo: {
+    flex: 1,
+  },
+  candidateName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  candidateParty: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 2,
+  },
+  candidatePosition: {
+    fontSize: 14,
+    color: '#888',
+  },
+  selectedIndicator: {
+    marginLeft: 10,
   },
   infoContainer: {
     width: '100%',
@@ -213,6 +384,117 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 18,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalSubtext: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  modalButton: {
+    backgroundColor: '#4630EB',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // QR Code styles
+  qrCodeContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 20,
+  },
+  qrCodeSection: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  qrCodeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  qrCodeWrapper: {
+    padding: 10,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 140,
+    width: 140,
+  },
+  qrCodeDescription: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  qrPlaceholder: {
+    height: 120,
+    width: 120,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrPlaceholderText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 5,
   },
 });
 

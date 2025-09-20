@@ -91,6 +91,12 @@ const DashboardScreen = ({ navigation }) => {
       >
         <Ionicons name="qr-code-outline" size={24} color="white" />
       </TouchableOpacity>
+      <TouchableOpacity 
+        style={{...styles.fab, bottom:100, display:"flex", borderRadius:9, backgroundColor:"#FFF700"}}
+        onPress={() => stackNavigation.navigate('QRDisplay')}
+      >
+        <Text style={{"fontWeight":"bold", margin:"auto", position:"relative", left:15}}>Vote Cast</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

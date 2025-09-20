@@ -1,9 +1,10 @@
-import React from 'react';
+import React, {useContext} from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContext';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -73,7 +74,7 @@ const MainStack = () => {
 };
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useContext(AuthContext);
   
   if (loading) {
     // You could return a loading screen here

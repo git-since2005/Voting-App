@@ -1,38 +1,51 @@
-import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  Image, 
-  KeyboardAvoidingView, 
+import React, { useState, useContext } from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert
-} from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
+  Alert,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AuthContext } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext";
 
 const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { setUser } = useContext(AuthContext);
   const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     setIsLoading(true);
     try {
-      const result = await login(email, password);
+      const response = await fetch("http://192.168.109.149:5000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = await response.json();
+
       if (!result.success) {
-        Alert.alert('Login Failed', result.error || 'Invalid credentials');
+        Alert.alert("Login Failed", result.error || "Invalid credentials");
+        return;
       }
+      AsyncStorage.setItem("@user_txHash", JSON.stringify({ token: result.token, email, voterID: result.voterID }));
+      login(result.token);
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert("Error", "An unexpected error occurred");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -41,7 +54,7 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -52,7 +65,7 @@ const LoginScreen = ({ navigation }) => {
 
         <View style={styles.formContainer}>
           <Text style={styles.title}>Login</Text>
-          
+
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -61,7 +74,7 @@ const LoginScreen = ({ navigation }) => {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          
+
           <TextInput
             style={styles.input}
             placeholder="Password"
@@ -69,20 +82,20 @@ const LoginScreen = ({ navigation }) => {
             onChangeText={setPassword}
             secureTextEntry
           />
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleLogin}
             disabled={isLoading}
           >
             <Text style={styles.buttonText}>
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? "Logging in..." : "Login"}
             </Text>
           </TouchableOpacity>
-          
+
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
               <Text style={styles.registerLink}>Register</Text>
             </TouchableOpacity>
           </View>
@@ -95,32 +108,32 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 40,
   },
   logoText: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4630EB',
+    fontWeight: "bold",
+    color: "#4630EB",
   },
   tagline: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     marginTop: 5,
   },
   formContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -128,47 +141,47 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
-    textAlign: 'center',
-    color: '#333',
+    textAlign: "center",
+    color: "#333",
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     marginBottom: 15,
     paddingHorizontal: 15,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
   },
   button: {
-    backgroundColor: '#4630EB',
+    backgroundColor: "#4630EB",
     height: 50,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 10,
   },
   buttonDisabled: {
-    backgroundColor: '#a097e8',
+    backgroundColor: "#a097e8",
   },
   buttonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 20,
   },
   registerText: {
-    color: '#666',
+    color: "#666",
   },
   registerLink: {
-    color: '#4630EB',
-    fontWeight: 'bold',
+    color: "#4630EB",
+    fontWeight: "bold",
   },
 });
 
